@@ -30,13 +30,9 @@ def get_pun():
     return html.unescape(pun) + "\n\n© 1996-2017 http://www.punoftheday.com"
 
 @handle_exception
-def send_mail():
-    user = environ.get("EMAIL")
-    password = environ.get("PASSWORD")
-    if len(sys.argv) == 2:
-        target = sys.argv[1]
-    else:
-        target = "atran@aic.ac.nz"
+def send_mail(user, password, target):
+    if target is None:
+        target = user
     
     msg = EmailMessage()
     msg.set_content(get_pun())
@@ -50,6 +46,16 @@ def send_mail():
 
 if __name__ == '__main__':
     load_dotenv(find_dotenv())
-    send_mail()
-#    for i in range(5):
-#        Process(target=send_mail).start()
+    user = environ.get("EMAIL")
+    password = environ.get("PASSWORD")
+    
+    target = user
+    times = 1
+    if len(sys.argv) >= 2:
+        target = sys.argv[1]
+    if len(sys.argv) >= 3:
+        times = int(sys.argv[2])
+    
+#    send_mail()
+    for i in range(times):
+        Process(target=send_mail, args=(user, password, target)).start()
