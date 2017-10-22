@@ -6,7 +6,7 @@ Created on Sat Oct 14 20:55:53 2017
 @author: alanspringfield
 """
 
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 import smtplib
 from email.message import EmailMessage
 from dotenv import load_dotenv, find_dotenv
@@ -15,6 +15,7 @@ import requests
 import re
 import html
 import sys
+import queue
 
 def handle_exception(func):
     def wrapper(*args, **kwargs):
@@ -31,19 +32,31 @@ def get_pun():
 
 def connect_gmail(user, password):
     conn = smtplib.SMTP('smtp.gmail.com', 587)
+    conn.set_debuglevel(1)
     conn.ehlo()
     conn.starttls()
-#    conn.ehlo()
     conn.login(user, password)
     return conn
 
+def take_job(q):
+    try:
+        q.get_nowait()
+        return True
+    except queue.Empty:
+        return False
+
 #@handle_exception
-def send_pun(user, target, conn):    
-    msg = EmailMessage()
-    msg.set_content(get_pun())
-    msg['Subject'] = "Pun of the Day"
+def send_pun(user, target, q):
+    conn = connect_gmail(user, password)
     
-    conn.send_message(msg, user, target)
+    while take_job(q):
+        msg = EmailMessage()
+        msg.set_content(get_pun())
+        msg['Subject'] = "Pun of the Day"
+        
+        conn.send_message(msg, user, target)
+        
+    conn.quit()
     
 if __name__ == '__main__':
     load_dotenv(find_dotenv())
@@ -57,9 +70,10 @@ if __name__ == '__main__':
     if len(sys.argv) >= 3:
         times = int(sys.argv[2])
         
-    conn = connect_gmail(user, password)
-    
+    q = Queue()
     for i in range(times):
-        Process(target=send_pun, args=(user, target, conn)).start()
+        q.put(i)
         
-    conn.quit()
+    for i in range(4):
+#        send_pun(user, target, conn)
+        Process(target=send_pun, args=(user, target, q)).start()
