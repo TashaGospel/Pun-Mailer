@@ -26,13 +26,17 @@ def handle_exception(func):
     return wrapper
     
 def get_pun():
-    raw = requests.get("http://www.punoftheday.com/cgi-bin/arandompun.pl").text
-    pun = re.search(r"&quot;(.+)&quot;", raw).group(1)
-    return html.unescape(pun) + "\n\n© 1996-2017 http://www.punoftheday.com"
+    while True:
+        try:
+            raw = requests.get("http://www.punoftheday.com/cgi-bin/arandompun.pl").text
+            pun = re.search(r"&quot;(.+)&quot;", raw).group(1)
+            return html.unescape(pun) + "\n\n© 1996-2017 http://www.punoftheday.com"
+        except AttributeError:
+            pass
 
 def connect_gmail(user, password):
     conn = smtplib.SMTP('smtp.gmail.com', 587)
-    conn.set_debuglevel(1)
+#    conn.set_debuglevel(1)
     conn.ehlo()
     conn.starttls()
     conn.login(user, password)
@@ -51,7 +55,9 @@ def send_pun(user, target, q):
     
     while take_job(q):
         msg = EmailMessage()
-        msg.set_content(get_pun())
+        pun = get_pun()
+        print(pun)
+        msg.set_content(pun)
         msg['Subject'] = "Pun of the Day"
         
         conn.send_message(msg, user, target)
@@ -73,7 +79,6 @@ if __name__ == '__main__':
     q = Queue()
     for i in range(times):
         q.put(i)
-        
-    for i in range(4):
-#        send_pun(user, target, conn)
+    
+    for i in range(10):
         Process(target=send_pun, args=(user, target, q)).start()
